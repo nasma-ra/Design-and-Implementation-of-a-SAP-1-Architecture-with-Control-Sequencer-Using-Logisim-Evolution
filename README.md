@@ -194,16 +194,13 @@ For every instruction:
 
 ### Representative Execute Sequences
 
-- *LDA addr:*  
-  - T4: Operand address (IR[3:0]) placed on bus and loaded into MAR.  
-  - T5: Memory value read and latched into A (A ← M[MAR]).  
-- *ADD:*  
-  - T4: A and B outputs drive ALU; result fed back to A (alu_sub = 0).  
-- *SUB:*  
-  - T4: Similar to ADD with subtraction (alu_sub = 1).  
-- *JMP addr:*  
-  - T4: Operand placed on bus and loaded into PC (PC ← IR[3:0]).
-
+*LDAaddr:T2→insregouten,marinen→MAR←IR[3:0];T3→sramread,
+ ain→A←M[MAR].
+ *•LDBaddr:T2→insregouten,marinen→MAR←IR[3:0];T3→sramread,
+ bin→B←M[MAR].
+ *•ADD:T2→insregoutT3→aluout,ain→A←A+B.
+ *•COMPAREaddr:T2→alusub,compout→comparevalueAandB
+ *•HLT:T4→hlt=1→Haltsthesystembydisablingtheringcounter
 ## Automatic Operation Control Logic
 
 Automatic operation uses:  
