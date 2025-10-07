@@ -23,8 +23,7 @@ Click on the Table of Contents below to directly go to the sections:
   - [Assembler](#assembler)
 - [Operation](#operation)
   - [Fetch–Decode–Execute Cycle](#fetchdecodeexecute-cycle)
-  - [Running the CPU in Manual Mode](#running-the-cpu-in-manual-mode)
-  - [Running the CPU in Automatic Mode (JMP + ADD Program)](#running-the-cpu-in-automatic-mode-jmp--add-program)
+  - [Running the CPU in Automatic Mode (COMPARE + ADD Program)](#running-the-cpu-in-automatic-mode-compare--add-program)
 - [Future Improvement](#future-improvement)
 - [Conclusion](#conclusion)
 
@@ -107,11 +106,10 @@ The **Program Counter (PC)** handles instruction address sequencing:
 ### Memory System and Address Register
 The **Memory Address Register (MAR)** captures addresses from the bus controlled by `mar_in_en`.  
 - During **instruction fetch (T1)**, the **Program Counter** value is loaded into the MAR.  
-- During **operand addressing (T4)**, the operand address (IR[3:0]) is loaded into the MAR for memory access.
+- During **operand addressing**, the operand address (IR[3:0]) is loaded into the MAR for memory access.
 
 The **SRAM** handles both read and write operations based on control signals:  
-- **Read Mode:** During **T2** (instruction fetch) and **T5** (LDA/LDB).  
-- **Write Mode:** During **T5** (STA instruction).
+- **Read Mode:** During **T1** (instruction fetch) and **T2** (LDA/LDB).  
 
 ![Memory Element](images/data_in_sram.jpg)  
 *Figure 6:* Register-based memory element showing data_in, wr_en, rd_en, clock, and chip select (cs) signals. Output to the bus is via data_out.  
@@ -176,14 +174,105 @@ The **Timing Control Generator** manages **six-phase sequencing** for fetch–de
 
 ## Instruction Set Architecture
 
-### Instruction Encoding Scheme
-Each instruction consists of:
-- **Opcode (IR[7:4])** and **Operand (IR[3:0])**  
-- The opcode determines the instruction type (e.g., LDA, ADD), and the operand can be a memory address or immediate value.
+The **Instruction Set Architecture (ISA)** defines the set of operations the SAP-1 processor can perform, including both the opcodes (instructions) and the addressing methods for operands. In this project, the SAP-1 processor supports a set of 5 basic instructions, with a focus on educational simplicity.
+
+### 1. Instruction Encoding Scheme
+
+Each instruction consists of two main parts:
+
+- **Opcode (4 bits):** The first 4 bits in the instruction represent the operation to be executed (e.g., Load, Add, Compare).
+- **Operand/Address (4 bits):** The last 4 bits represent the address or operand associated with the instruction. In this simple design, this can be a memory address or a direct operand (depending on the instruction type).
+
+For example:
+- **LDA** (Load Accumulator) loads data from a specific memory location into the accumulator register.
+- **ADD** adds the contents of memory or a register to the accumulator.
+
+The instruction format in binary would look like:
+
+|  Opcode  | Operand/Address |
+|  4 bits  |   4 bits        |
+
+Here’s an example:
+
+
+### 2. Instruction Set
+
+The **SAP-1 processor** in this project supports the following instructions, each of which has a specific binary opcode:
+
+| **Opcode (Binary)** | **Instruction** | **Description**                        |
+|---------------------|-----------------|----------------------------------------|
+| `0001`              | LDA (Load Accumulator) | Loads data from memory to register A.  |
+| `0010`              | LDB (Load Register B) | Loads data from memory to register B.  |
+| `0011`              | ADD (Add)       | Adds contents of register B to A.      |
+| `1101`              | COMPARE         | Compares contents of registers A and B.|
+| `1111`              | HLT (Halt)      | Stops the execution.                   |
+
+These instructions are used in a simple **fetch–decode–execute cycle** to perform basic arithmetic and control tasks.
 
 ---
 
-### Assembler
+### 3. Instruction Details
+
+#### **LDA (Load Accumulator)**
+
+- **Description**: This instruction loads the value from the memory address specified by the operand into the **Accumulator (A)**.
+- **Opcode**: `0001`
+- **Example**: `LDA 8` – Loads the value at memory location 8 into the accumulator.
+
+#### **LDB (Load Register B)**
+
+- **Description**: This instruction loads the value from the memory address specified by the operand into **Register B**.
+- **Opcode**: `0010`
+- **Example**: `LDB 9` – Loads the value at memory location 9 into register B.
+
+#### **ADD (Addition)**
+
+- **Description**: Adds the contents of **Register B** to the **Accumulator (A)** and stores the result back in **Accumulator A**.
+- **Opcode**: `0011`
+- **Example**: `ADD` – Adds the contents of B to A (A = A + B).
+
+#### **COMPARE**
+
+- **Description**: Compares the values in **Register A** and **Register B** and sets flags (e.g., less than, equal, greater than) accordingly.
+- **Opcode**: `1101`
+- **Example**: `COMPARE` – Compares the values of A and B and sets the respective comparison flags.
+
+#### **HLT (Halt)**
+
+- **Description**: Stops the processor execution.
+- **Opcode**: `1111`
+- **Example**: `HLT` – Halts the execution of the processor.
+
+---
+
+### 4. Instruction Format
+Each instruction is **8 bits** in length:
+- **Opcode** (4 bits): Specifies the operation to be performed.
+- **Operand/Address** (4 bits): Represents the address in memory or the data for the operation.
+
+#### Example Instruction:
+Instruction: `LDA 8`
+
+
+---
+
+### 5. Assembler
+A **custom Python-based assembler** was created for converting **assembly language** instructions into machine-readable **hexadecimal format**. The assembler performs the following tasks:
+
+- **Tokenization**: The assembler reads the human-readable assembly source code, extracting mnemonics (instructions), operands, and comments.
+- **Opcode Translation**: Each mnemonic is mapped to its corresponding 4-bit opcode (e.g., `LDA → 0001`).
+- **Memory Address Parsing**: The operand is parsed and translated into a 4-bit address, forming the complete 8-bit machine instruction.
+- **Output**: The assembler generates a list of **hexadecimal machine codes**, ready for use in the Logisim simulation.
+
+#### Example Assembly Code:
+```assembly
+LDA 8
+LDB 9
+ADD
+COMPARE
+HLT
+---
+#### Assembler
 The **Assembler** converts SAP-1 assembly language instructions into machine code:
 - **Tokens**: Translates mnemonics like `LDA`, `ADD`, `STA` into **4-bit opcodes** and **4-bit operands**.
 - **Output**: Generates machine code in **hexadecimal** format suitable for Logisim.
@@ -201,27 +290,11 @@ The processor operates by continuously fetching, decoding, and executing instruc
 
 ---
 
-### Running the CPU in Manual Mode
-
-In **Manual Mode**, you can load and test the program step-by-step using the control signals. Each step is manually triggered, allowing for **precise debugging**.
-
----
-
-### Running the CPU in Automatic Mode (JMP + ADD Program)
+### Running the CPU in Automatic Mode (COMPARE + ADD Program)
 
 The **Automatic Mode** allows continuous execution of a program using a clock pulse:
 1. **Program Loading**: The program is first loaded into **RAM** using **Manual Mode**.  
-2. **Execution**: The CPU automatically fetches and executes each instruction in sequence, including operations like **ADD**, **JMP**, etc.
-
----
-
-## Future Improvement
-
-The SAP-1 processor design can be enhanced with features such as:
-- **Status Flags**: Add Zero and Carry flags for conditional jumps.  
-- **Expanded Memory**: Implement multi-byte addressing and memory-mapped I/O.  
-- **Microcoded Control Unit**: Support more complex instructions and branching.  
-- **Expanded Assembler**: Add support for labels and expressions to make programming easier.
+2. **Execution**: The CPU automatically fetches and executes each instruction in sequence, including operations like **ADD**, **COMPARE**, etc.
 
 ---
 
